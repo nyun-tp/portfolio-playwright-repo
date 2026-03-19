@@ -1,0 +1,25 @@
+{
+  "name": "portfolio-playwright-repo",
+  "version": "1.0.0",
+  "description": "Examples for freelance portfolio",
+  "homepage": "https://github.com/nyun-tp/portfolio-playwright-repo#readme",
+  "bugs": {
+    "url": "https://github.com/nyun-tp/portfolio-playwright-repo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nyun-tp/portfolio-playwright-repo.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {},
+  "dependencies": {
+    "playwright": "^1.39.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^20.8.9"
+  }
+}
