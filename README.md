@@ -1,5 +1,5 @@
 # portfolio-playwright-repo
-Nyun Tran-Phan's Playwright automation portfolio
+Nyun Tran-Phan's Playwright automation portfolio, testing out the Hackernews webpages.
 
 ---
 
@@ -28,14 +28,14 @@ npx playwright test tests/e2e/hackernews/homepage.spec.ts
 Override the article count for the sort validation:
 
 ```bash
-ARTICLES_TO_VALIDATE=50 npx playwright test tests/e2e/hackerrank/hackernews.spec.ts
+ARTICLES_TO_VALIDATE=50 npx playwright test tests/e2e/hackernews/hackernews_rank.spec.ts
 ```
 
 ---
 
 ## Test suites
 
-### 1. Hacker News — Newest article sort (`tests/e2e/hackerrank/`)
+### 1. Hacker News — Newest article sort (`tests/e2e/hackernews/hackernews_rank.spec.ts`)
 
 Validates that the first 100 articles on [/newest](https://news.ycombinator.com/newest) are sorted from newest to oldest.
 
@@ -106,14 +106,11 @@ Validates that each section enforces its content rules.
 
 | Test | What it checks |
 |---|---|
-| Ask HN prefix | All `/ask` titles start with `"Ask HN:"` |
-| Ask HN internal links | All Ask HN articles link to `item?id=…` (no external URLs) |
-| Ask HN metadata | Score, author, and timestamp present on every article |
-| Ask HN comment links | Every subline has a valid comment count link |
-| Ask HN pagination | "More" link is present |
+| /ask internal links | All articles are self-posts linking to `item?id=…` (Ask HN, Tell HN, and other discussion posts) |
+| /ask metadata | Score, author, and timestamp present on every article |
+| /ask comment links | Every subline has a valid comment count link |
+| /ask pagination | "More" link is present |
 | Show HN prefix | All `/show` titles start with `"Show HN:"` |
-| Show HN external links | No Show HN article links to an internal `item?id=…` page |
-| Show HN domain tag | Every Show HN article displays a `.sitebit` domain next to its title |
 | Show HN metadata | Score, author, and timestamp present on every article |
 | Show HN pagination | "More" link is present |
 
@@ -128,28 +125,41 @@ Validates the structure and navigation of HN user profile pages using `pg` (Paul
 | Profile loads | Page URL matches the expected user ID |
 | Username displayed | Profile table shows the correct username |
 | Karma score | Karma is a positive integer |
-| Creation date format | Date matches `YYYY-MM-DD` |
-| Creation date value | Date is in the past |
+| Creation date | Date is parseable and is in the past (HN may render ISO or locale format depending on browser timing) |
 | Submissions link | Navigates to the user's submission history |
 | Comments link | Navigates to the user's comment history |
 | Author link from front page | Clicking an article author opens the correct profile |
 
 ---
 
+## Shared utilities (`tests/e2e/hackernews/helpers.ts`)
+
+All five `hackernews/` suites import from a shared helpers module rather than duplicating code.
+
+| Export | Purpose |
+|---|---|
+| `HN_URL` | Base URL constant |
+| `gotoHN(page, path?)` | Navigates to an HN page with consistent `waitUntil: 'domcontentloaded'` |
+| `collectTitleLinks(page)` | Returns `{ title, href, index }[]` for every `.titleline > a` on the page — single browser round trip via `evaluateAll` |
+| `collectSublineMetadataErrors(page)` | Checks every article subline for score, author, and timestamp — returns error strings, single round trip |
+
+---
+
 ## Project structure
 
 ```
+tsconfig.json                           # TypeScript compiler config
+playwright.config.ts                    # Playwright configuration
 tests/
 └── e2e/
     └── hackernews/
+        ├── helpers.ts                  # Shared utilities (URL, navigation, locator helpers)
+        ├── hackernews_rank.spec.ts     # Newest article sort validation
         ├── homepage.spec.ts            # Front page structure
         ├── navigation.spec.ts          # Section routing and browser history
         ├── article-page.spec.ts        # Article discussion page and comments
         ├── ask-show.spec.ts            # Ask HN and Show HN content rules
-        ├── user-profile.spec.ts        # User profile page
-        ├── hackernews.spec.ts          # Newest article sort validation
-        └── hackernews-rank-notes.MD    # Test design notes
-
+        └── user-profile.spec.ts        # User profile page
 ```
 
 ## CI
