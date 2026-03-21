@@ -48,19 +48,13 @@ export function parseRank(rankText: string): number {
  * Returns an array of `{ title, href, index }` objects, one per article.
  */
 export async function collectTitleLinks(page: Page): Promise<TitleLink[]> {
-  const links = page.locator('.titleline > a');
-  const count = await links.count();
-  const results: TitleLink[] = [];
-
-  for (let i = 0; i < count; i++) {
-    results.push({
-      title: (await links.nth(i).innerText()).trim(),
-      href: (await links.nth(i).getAttribute('href')) ?? '',
+  return page.locator('.titleline > a').evaluateAll(els =>
+    els.map((el, i) => ({
+      title: (el as HTMLAnchorElement).innerText.trim(),
+      href: (el as HTMLAnchorElement).getAttribute('href') ?? '',
       index: i + 1,
-    });
-  }
-
-  return results;
+    }))
+  );
 }
 
 /**
@@ -75,16 +69,13 @@ export async function collectTitleLinks(page: Page): Promise<TitleLink[]> {
  * expect(errors, errors.join('\n')).toHaveLength(0);
  */
 export async function collectSublineMetadataErrors(page: Page): Promise<string[]> {
-  const sublines = page.locator('.subtext .subline');
-  const count = await sublines.count();
-  const errors: string[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const sub = sublines.nth(i);
-    if (!(await sub.locator('.score').count())) errors.push(`Article ${i + 1}: missing score`);
-    if (!(await sub.locator('.hnuser').count())) errors.push(`Article ${i + 1}: missing author`);
-    if (!(await sub.locator('.age').count())) errors.push(`Article ${i + 1}: missing timestamp`);
-  }
-
-  return errors;
+  return page.locator('.subtext .subline').evaluateAll(sublines =>
+    sublines.flatMap((sub, i) => {
+      const errors: string[] = [];
+      if (!sub.querySelector('.score'))  errors.push(`Article ${i + 1}: missing score`);
+      if (!sub.querySelector('.hnuser')) errors.push(`Article ${i + 1}: missing author`);
+      if (!sub.querySelector('.age'))    errors.push(`Article ${i + 1}: missing timestamp`);
+      return errors;
+    })
+  );
 }

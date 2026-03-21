@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { HN_URL, gotoHN, parseRank } from './helpers';
+import { gotoHN, parseRank } from './helpers';
 
 // ─── Test Suite ───────────────────────────────────────────────────────────────
 

@@ -1,8 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+import { HN_URL, gotoHN } from './helpers';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-
-const HN_URL = 'https://news.ycombinator.com';
 
 /**
  * A well-known, long-standing HN account used as a stable test fixture.
@@ -14,27 +13,33 @@ const TEST_USER = 'pg';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Returns the text content of the last <td> in the profile table row
- * that contains the given label text (e.g. "karma:", "created:").
+ * Returns the value <td> adjacent to the label cell for the given profile field.
+ *
+ * `filter({ hasText })` does a substring match, so a label like "user:" would
+ * also match rows whose about text happens to contain "user:". Instead, we find
+ * the <td> whose text content is *exactly* the label, then use XPath to navigate
+ * to its immediate sibling value cell — unambiguous regardless of page content.
  */
-function profileRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('tr').filter({ hasText: label }).locator('td').last();
+function profileRow(page: Page, label: string) {
+  return page
+    .locator('td')
+    .filter({ hasText: new RegExp(`^\\s*${label}\\s*$`) })
+    .first()
+    .locator('xpath=following-sibling::td[1]');
 }
 
 // ─── Test Suite ───────────────────────────────────────────────────────────────
 
 test.describe('Hacker News — User Profile Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${HN_URL}/user?id=${TEST_USER}`, { waitUntil: 'domcontentloaded' });
+    await gotoHN(page, `/user?id=${TEST_USER}`);
   });
 
   // ── Identity & presence ────────────────────────────────────────────────────
 
   test('profile page loads and shows the correct username', async ({ page }) => {
     await expect(page).toHaveURL(`${HN_URL}/user?id=${TEST_USER}`);
-    // The username cell contains a link with the username as its text.
-    const usernameCell = profileRow(page, 'user:');
-    await expect(usernameCell).toContainText(TEST_USER);
+    await expect(profileRow(page, 'user:')).toContainText(TEST_USER);
   });
 
   // ── Profile fields ─────────────────────────────────────────────────────────
@@ -46,20 +51,19 @@ test.describe('Hacker News — User Profile Page', () => {
     expect(karma, `Expected a positive karma score, got "${karmaText}"`).toBeGreaterThan(0);
   });
 
-  test('profile shows an account creation date in YYYY-MM-DD format', async ({ page }) => {
-    const dateText = await profileRow(page, 'created:').innerText();
-    expect(dateText.trim()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-  });
-
-  test('profile creation date is a date in the past', async ({ page }) => {
-    const dateText = await profileRow(page, 'created:').innerText();
-    const created = new Date(dateText.trim());
-    expect(created.getTime()).toBeLessThan(Date.now());
+  test('profile shows a valid creation date in the past', async ({ page }) => {
+    const dateText = (await profileRow(page, 'created:').innerText()).trim();
+    // HN renders "YYYY-MM-DD" server-side, but page JS may reformat it to a
+    // locale string (e.g. "October 9, 2006") before we read it, depending on
+    // browser timing. Accept whichever format arrives.
+    const parsed = new Date(dateText);
+    expect(parsed.getTime(), `Could not parse creation date: "${dateText}"`).not.toBeNaN();
+    expect(parsed.getTime(), `Creation date "${dateText}" should be in the past`).toBeLessThan(Date.now());
   });
 
   // ── Navigation links ───────────────────────────────────────────────────────
 
-  test('profile has a working link to the user\'s submissions', async ({ page }) => {
+  test("profile has a working link to the user's submissions", async ({ page }) => {
     const link = page.locator(`a[href="submitted?id=${TEST_USER}"]`);
     await expect(link).toBeVisible();
 
@@ -71,7 +75,7 @@ test.describe('Hacker News — User Profile Page', () => {
     await expect(page.locator('.athing').first()).toBeVisible();
   });
 
-  test('profile has a working link to the user\'s comments', async ({ page }) => {
+  test("profile has a working link to the user's comments", async ({ page }) => {
     const link = page.locator(`a[href="threads?id=${TEST_USER}"]`);
     await expect(link).toBeVisible();
 
@@ -82,8 +86,8 @@ test.describe('Hacker News — User Profile Page', () => {
 
   // ── Navigation from article list ───────────────────────────────────────────
 
-  test('clicking an author link on the front page opens that user\'s profile', async ({ page }) => {
-    await page.goto(HN_URL, { waitUntil: 'domcontentloaded' });
+  test("clicking an author link on the front page opens that user's profile", async ({ page }) => {
+    await gotoHN(page);
 
     const firstAuthorLink = page.locator('.hnuser').first();
     const authorName = await firstAuthorLink.innerText();
@@ -92,7 +96,6 @@ test.describe('Hacker News — User Profile Page', () => {
     await page.waitForLoadState('domcontentloaded');
 
     await expect(page).toHaveURL(`${HN_URL}/user?id=${authorName}`);
-    // The username should appear in the profile table.
     await expect(profileRow(page, 'user:')).toContainText(authorName);
   });
 });
