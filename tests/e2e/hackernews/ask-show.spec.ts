@@ -1,38 +1,15 @@
 import { test, expect } from '@playwright/test';
-
-// ─── Configuration ────────────────────────────────────────────────────────────
-
-const HN_URL = 'https://news.ycombinator.com';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Collects all title links on the current page and returns
- * an array of { title, href } objects.
- */
-async function collectTitleLinks(
-  page: import('@playwright/test').Page,
-): Promise<{ title: string; href: string; index: number }[]> {
-  const links = page.locator('.titleline > a');
-  const count = await links.count();
-  const results: { title: string; href: string; index: number }[] = [];
-
-  for (let i = 0; i < count; i++) {
-    results.push({
-      title: (await links.nth(i).innerText()).trim(),
-      href: (await links.nth(i).getAttribute('href')) ?? '',
-      index: i + 1,
-    });
-  }
-
-  return results;
-}
+import {
+  gotoHN,
+  collectTitleLinks,
+  collectSublineMetadataErrors,
+} from './helpers';
 
 // ─── Ask HN ───────────────────────────────────────────────────────────────────
 
 test.describe('Hacker News — Ask HN (/ask)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${HN_URL}/ask`, { waitUntil: 'domcontentloaded' });
+    await gotoHN(page, '/ask');
   });
 
   test('all articles start with "Ask HN:"', async ({ page }) => {
@@ -56,17 +33,7 @@ test.describe('Hacker News — Ask HN (/ask)', () => {
   });
 
   test('Ask HN articles have a score, author, and timestamp', async ({ page }) => {
-    const sublines = page.locator('.subtext .subline');
-    const count = await sublines.count();
-    const errors: string[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const sub = sublines.nth(i);
-      if (!(await sub.locator('.score').count())) errors.push(`Article ${i + 1}: missing score`);
-      if (!(await sub.locator('.hnuser').count())) errors.push(`Article ${i + 1}: missing author`);
-      if (!(await sub.locator('.age').count())) errors.push(`Article ${i + 1}: missing timestamp`);
-    }
-
+    const errors = await collectSublineMetadataErrors(page);
     expect(errors, errors.join('\n')).toHaveLength(0);
   });
 
@@ -95,7 +62,7 @@ test.describe('Hacker News — Ask HN (/ask)', () => {
 
 test.describe('Hacker News — Show HN (/show)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${HN_URL}/show`, { waitUntil: 'domcontentloaded' });
+    await gotoHN(page, '/show');
   });
 
   test('all articles start with "Show HN:"', async ({ page }) => {
@@ -137,17 +104,7 @@ test.describe('Hacker News — Show HN (/show)', () => {
   });
 
   test('Show HN articles have a score, author, and timestamp', async ({ page }) => {
-    const sublines = page.locator('.subtext .subline');
-    const count = await sublines.count();
-    const errors: string[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const sub = sublines.nth(i);
-      if (!(await sub.locator('.score').count())) errors.push(`Article ${i + 1}: missing score`);
-      if (!(await sub.locator('.hnuser').count())) errors.push(`Article ${i + 1}: missing author`);
-      if (!(await sub.locator('.age').count())) errors.push(`Article ${i + 1}: missing timestamp`);
-    }
-
+    const errors = await collectSublineMetadataErrors(page);
     expect(errors, errors.join('\n')).toHaveLength(0);
   });
 
